@@ -29,6 +29,21 @@ public class BreakOnImpact : MonoBehaviour
             rb.AddExplosionForce(explosionForce, transform.position, explosionRadius);
         }
 
+        // Notify dialogue about bottle break
+        DialogueVR dialogue = FindFirstObjectByType<DialogueVR>();
+        if (dialogue != null)
+        {
+            dialogue.OnBottleBreak();
+        }
+
+        // Удаляем текущий кусок
+        Transform parent = transform.parent;
         Destroy(gameObject);
+
+        // Если родитель (префаб бутылки) опустел — удаляем его, чтобы не копились пустышки
+        if (parent != null && parent.childCount == 0)
+        {
+            Destroy(parent.gameObject);
+        }
     }
 }

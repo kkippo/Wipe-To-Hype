@@ -16,11 +16,8 @@ public class DialogueController : MonoBehaviour
 
     public void NextLine()
     {
-        Debug.Log($"DialogueController.NextLine called (index={index}, lines={(lines==null?0:lines.Length)})");
-
         if (lines == null || lines.Length == 0)
         {
-            Debug.LogWarning("DialogueController: lines array is empty or null.");
             return;
         }
 
@@ -30,7 +27,6 @@ public class DialogueController : MonoBehaviour
             output = GetComponentInChildren<TMP_Text>();
             if (output == null)
             {
-                Debug.LogWarning("DialogueController: output (TMP_Text) is not assigned and none found in children.");
                 return;
             }
         }
@@ -39,10 +35,6 @@ public class DialogueController : MonoBehaviour
         {
             output.text = lines[index];
             index++;
-        }
-        else
-        {
-            Debug.Log("DialogueController: reached end of lines.");
         }
     }
 

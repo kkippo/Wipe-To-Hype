@@ -7,6 +7,9 @@ TagManager:
   - Anchor
   - Cube
   - Plane
+  - Coin
+  - Kazan
+  - Break
   layers:
   - Default
   - TransparentFX

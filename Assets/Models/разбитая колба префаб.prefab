@@ -16,7 +16,7 @@ GameObject:
   - component: {fileID: 1515390930967570527}
   m_Layer: 0
   m_Name: 1.5x1.5x9.8 cm Test Tube.
-  m_TagString: Untagged
+  m_TagString: Break
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -318,7 +318,7 @@ GameObject:
   - component: {fileID: 3887700116277032804}
   m_Layer: 0
   m_Name: 1.5x1.5x9.8 cm Test Tube..001
-  m_TagString: Untagged
+  m_TagString: Break
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
