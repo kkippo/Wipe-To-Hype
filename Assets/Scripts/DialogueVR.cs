@@ -1,6 +1,7 @@
 using System;
 using TMPro;
 using UnityEngine;
+using System.Collections;
 
 public class DialogueVR : MonoBehaviour
 {
@@ -11,6 +12,10 @@ public class DialogueVR : MonoBehaviour
 
     public GameObject nextButton;
     public GameObject prevButton;
+
+    // ===== Victory UI =====
+    public GameObject dialogueWindow;
+    public GameObject victoryWindow;
 
     private int index = 0;
 
@@ -26,51 +31,60 @@ public class DialogueVR : MonoBehaviour
     private bool isBottleBroken = false;
     private int totalBreakPieces = 0;
     private int cleanedBreakPieces = 0;
+
+    private bool breakPhraseAdded = false;
+    private string breakEventPhraseTemplate = "АААА! Ты разбил, убери.\nОсколки: {cleanedBreak} / {totalBreak}";
+
+    // ===== Witch Face =====
     public Material witchNormalFace;
     public Material witchScaredFace;
     public Renderer witchFaceRenderer;
-    private int normalMaterialIndex = 0;
+    private int normalMaterialIndex = 2;
+    public Animator witchFaceAnimator;
+
     public AudioClip bottleBreakSound;
+    public AudioClip witchSpeechSound;
     private AudioSource audioSource;
 
-    // Шаблон финальной фразы при разбитии (добавим динамически в конец массива)
-    private string breakEventPhraseTemplate = "АААА! Ты разбил, убери.\nОсколки: {cleanedBreak} / {totalBreak}";
+    private bool hasShowedVictory = false;
 
     void Start()
     {
-        // Добавляем финальную фразу в конец массива
-        System.Array.Resize(ref phrases, phrases.Length + 1);
-        phrases[phrases.Length - 1] = breakEventPhraseTemplate;
-
-        // Аудио для звука разбития
         audioSource = GetComponent<AudioSource>();
         if (audioSource == null)
-        {
             audioSource = gameObject.AddComponent<AudioSource>();
-        }
 
         CountTotalTasks();
         index = 0;
         UpdateDialogue();
+
+        // Проверяем победу сразу на старте
+        CheckAndShowVictory();
     }
 
     // ================= Dialogue =================
 
     public void NextPhrase()
     {
+        if (hasShowedVictory) return;
+
         if (index < phrases.Length - 1)
         {
             index++;
             UpdateDialogue();
+            PlayTalkingAnimation();
         }
     }
 
     public void PrevPhrase()
     {
+        if (hasShowedVictory) return;
+
         if (index > 0)
         {
             index--;
             UpdateDialogue();
+            PlayTalkingAnimation();
         }
     }
 
@@ -104,6 +118,7 @@ public class DialogueVR : MonoBehaviour
         {
             collectedCoins++;
             UpdateDialogue();
+            CheckAndShowVictory();
         }
     }
 
@@ -113,6 +128,7 @@ public class DialogueVR : MonoBehaviour
         {
             collectedCubes++;
             UpdateDialogue();
+            CheckAndShowVictory();
         }
     }
 
@@ -125,13 +141,18 @@ public class DialogueVR : MonoBehaviour
         cleanedBreakPieces = 0;
         totalBreakPieces = GameObject.FindGameObjectsWithTag("Break").Length;
 
-        // Звук разбития
-        if (audioSource != null && bottleBreakSound != null)
+        if (!breakPhraseAdded)
         {
-            audioSource.PlayOneShot(bottleBreakSound);
+            string[] newPhrases = new string[phrases.Length + 1];
+            phrases.CopyTo(newPhrases, 0);
+            newPhrases[newPhrases.Length - 1] = breakEventPhraseTemplate;
+            phrases = newPhrases;
+            breakPhraseAdded = true;
         }
 
-        // Change witch face to scared
+        if (audioSource != null && bottleBreakSound != null)
+            audioSource.PlayOneShot(bottleBreakSound);
+
         if (witchFaceRenderer != null && witchScaredFace != null)
         {
             Material[] mats = witchFaceRenderer.materials;
@@ -139,12 +160,13 @@ public class DialogueVR : MonoBehaviour
             witchFaceRenderer.materials = mats;
         }
 
-        // Jump to the last phrase (break message)
+        if (witchFaceAnimator != null)
+            witchFaceAnimator.SetBool("IsScared", true);
+
         index = phrases.Length - 1;
         UpdateDialogue();
     }
 
-    // Явный вызов при уборке осколков/колбы
     public void OnBottleCleaned()
     {
         if (!isBottleBroken)
@@ -152,10 +174,12 @@ public class DialogueVR : MonoBehaviour
 
         cleanedBreakPieces++;
 
-        // Если все осколки убраны — вернуть лицо
         if (cleanedBreakPieces >= totalBreakPieces && totalBreakPieces > 0)
         {
             isBottleBroken = false;
+
+            if (witchFaceAnimator != null)
+                witchFaceAnimator.SetBool("IsScared", false);
 
             if (witchFaceRenderer != null && witchNormalFace != null)
             {
@@ -166,5 +190,58 @@ public class DialogueVR : MonoBehaviour
         }
 
         UpdateDialogue();
+        CheckAndShowVictory();
+    }
+
+    // ================= Talking Animation =================
+
+    private void PlayTalkingAnimation()
+    {
+        if (witchFaceAnimator != null)
+        {
+            witchFaceAnimator.SetTrigger("IsTalking");
+            StartCoroutine(ResetTalkingCoroutine());
+        }
+    }
+
+    private IEnumerator ResetTalkingCoroutine()
+    {
+        yield return new WaitForSeconds(0.5f);
+
+        if (witchFaceAnimator != null && !isBottleBroken)
+            witchFaceAnimator.ResetTrigger("IsTalking");
+    }
+
+    // ================= Victory =================
+
+    private void CheckAndShowVictory()
+    {
+        if (hasShowedVictory) return;
+
+        if (AreAllItemsCleaned())
+        {
+            hasShowedVictory = true;
+
+            // Сразу показываем Win-панель
+            if (dialogueWindow != null)
+                dialogueWindow.SetActive(false);
+
+            if (victoryWindow != null)
+                victoryWindow.SetActive(true);
+
+            if (audioSource != null && witchSpeechSound != null)
+                audioSource.PlayOneShot(witchSpeechSound);
+        }
+    }
+
+    public bool AreAllItemsCleaned()
+    {
+        bool coinsDone = collectedCoins >= totalCoins;
+        bool cubesDone = collectedCubes >= totalCubes;
+
+        // Если бутылка не была разбита, считаем осколки выполненными
+        bool breakDone = !breakPhraseAdded || cleanedBreakPieces >= totalBreakPieces;
+
+        return coinsDone && cubesDone && breakDone;
     }
 }
